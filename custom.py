@@ -5,6 +5,9 @@ from tkinter import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
 from tkinter import *
 from tkinter import simpledialog
+import re
+from datetime import datetime
+from datetime import date
 
 def prepareCookies(driver):
     json_cookie = 'LinkedIn Cookies/cookiebro-domaincookies-.www.linkedin.com.json'
@@ -56,3 +59,32 @@ def GetUserInputViaPrompt(title,prompt):
 def SortListByDicionaryKeyValue(list_to_sort , key_name):
     newlist = sorted(list_to_sort, key=itemgetter(key_name))
     return newlist
+
+
+def CallDateTime(OriginalDateString):
+    T = re.search('- .+2021',OriginalDateString)
+    if T!=None:
+        Type = 'Starts with Month'
+        Dates = OriginalDateString.split(' - ')
+        Date_1, Date_2 = re.sub(', \d{1,2}:.+$','',Dates[0]), re.sub(', \d{1,2}:.+$','',Dates[1])
+        #return Type, Date_1, Date_2
+    else:
+        Type = 'Starts with WeekDay'
+        Date_1 = re.sub(', \d{1,2}:.+$','',OriginalDateString)
+        Date_2 = None
+        #return Type, Date_1, Date_2
+    
+    if Type=='Starts with Month':
+        First_Date = datetime.strptime(Date_1,"%b %d, %Y").date()
+        Second_Date = datetime.strptime(Date_2,"%b %d, %Y").date()
+    elif Type=='Starts with WeekDay':
+        First_Date = datetime.strptime(Date_1,"%a, %b %d, %Y").date()
+        Second_Date = None
+    
+    Day_to_Go_From_First_Date = (First_Date - date.today()).days
+    if Second_Date==None:
+        Day_to_Go_From_Second_Date = ''
+    else:
+        Day_to_Go_From_Second_Date = (Second_Date - date.today()).days
+    
+    return First_Date,Second_Date,Day_to_Go_From_First_Date,Day_to_Go_From_Second_Date
