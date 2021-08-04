@@ -3,7 +3,7 @@
 #author: Tarek R.
 #date: Jul 12, 2021
 
-from custom import prepareCookies, EvaluateIfWeAreInLastPage, GetTargetDirectory, GetTargetFile,SortListByDicionaryKeyValue
+from custom import prepareCookies, EvaluateIfWeAreInLastPage, GetTargetDirectory, GetTargetFile,SortListByDicionaryKeyValue,GetUserInputViaPrompt, CallDateTime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -17,6 +17,9 @@ import os
 import csv
 import pandas as pd
 from random import randint as rand
+from datetime import datetime
+from datetime import date
+
 
 options = Options()
 options.add_argument("--start-maximized")
@@ -27,7 +30,8 @@ options.add_argument('--ignore-certificate-errors')
 
 
 def GetEventInfo(driver):
-    EventName = driver.find_element_by_xpath('//div[@class="events-top-card__info-container"]/h1').text
+    WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.XPATH, '//h1[contains(@class,"title")]')))
+    EventName = driver.find_element_by_xpath('//h1[contains(@class,"title")]').text
     
     return EventName
    
@@ -66,11 +70,27 @@ def joinEvent(driver):
         pass
 
 def GetTotalAttendees(driver):
-    WebDriverWait(driver, 8).until(EC.element_to_be_clickable((By.XPATH, '//ul[@tabindex]/..//span')))
-    TotalAttendees = driver.execute_script('return document.getElementsByClassName("events-live-social-proof__copy-text t-14")[0].innerText')
-    return re.sub(r' .+','',TotalAttendees)
+    try:
+    	WebDriverWait(driver, 8).until(EC.element_to_be_clickable((By.CLASS_NAME, '//ul[@tabindex]/..//span')))
+    except:
+    	pass
+    try:
+        TotalAttendees = driver.execute_script('return document.getElementsByClassName("events-live-social-proof__copy-text t-14")[0].innerText')
+        T = TotalAttendees.replace(',','')
+        totalAttendees = re.search(r'\d+',T)
+        return totalAttendees.group()
+    except:
+    	return 'Error Occured'
 
-
+def GetANZ_Attendees(driver):
+    try:
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, '//div[@class="pb2 t-black--light t-14"]')))
+        TotalANZ_Attendees = driver.find_element_by_xpath('//div[@class="pb2 t-black--light t-14"]').text
+        T = TotalANZ_Attendees.replace(',','')
+        totalANZAttendees = re.search(r'\d+',T)
+        return totalANZAttendees.group()
+    except:
+        return 0
 
 def ListEachPagesResult(driver):
     try:
@@ -103,7 +123,7 @@ def GetName(eachBox):
 # parameters: eachBox
 def EvaluatePositionAndCompany(eachBox):
     try:
-        PositionAndCompany = eachBox.find_element_by_xpath('.//div[@class="linked-area flex-1 cursor-pointer"]//div[contains(@class,"primary")]').text
+        PositionAndCompany = eachBox.find_element_by_xpath('.//div[contains(@class,"entity-result__primary-subtitle")]').text
         print(PositionAndCompany)
         return PositionAndCompany
     except:
@@ -120,7 +140,7 @@ def GetPositionAndCompany(eachBox):
 
 def EvaluateLocationAvailability(eachBox):
     try:
-        Location = eachBox.find_element_by_xpath('.//div[@class="linked-area flex-1 cursor-pointer"]//div[contains(@class,"secondary")]').text
+        Location = eachBox.find_element_by_xpath('.//div[contains(@class,"entity-result__secondary")]').text
         print(Location)
         return Location
     except:
@@ -144,8 +164,8 @@ def GetProfileURL(eachBox):
 
 def EvaluateNextButtonVisibility(driver):
     try:
-        WebDriverWait(driver, 2).until(EC.presence_of_all_elements_located((By.XPATH, '//*[@class="entity-result  "]')))
-        NB = driver.find_elements_by_xpath('//*[@class="entity-result  "]')[-1]
+        WebDriverWait(driver, 2).until(EC.presence_of_all_elements_located((By.XPATH, '//span/a[@href]')))
+        NB = driver.find_elements_by_xpath('//span/a[@href]')[-1]
         action = ActionChains(driver)
         NB.location_once_scrolled_into_view
         time.sleep(rand(2,5))
@@ -166,16 +186,9 @@ def ClickNextButton(driver):
     else:
         driver.execute_script(f"document.getElementById('{Test}').firstElementChild.click()")
         print('Next Button Clicked... Waiting for Next pages result to be visible')
-        WebDriverWait(driver, 20).until(EC.presence_of_all_elements_located((By.XPATH, '//*[@class="entity-result  "]')))
+        WebDriverWait(driver, 15).until(EC.presence_of_all_elements_located((By.XPATH, '//span/a[@href]')))
         
-def GetANZ_Attendees(driver):
-    try:
-        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, '//div[@class="pb2 t-black--light t-14"]')))
-        TotalANZ_Attendees = driver.find_element_by_xpath('//div[@class="pb2 t-black--light t-14"]').text
-        
-        return re.sub(r' .+','',TotalANZ_Attendees)
-    except:
-        return 0
+
 
 def CheckIfEventEnded(driver):
     try:
@@ -209,6 +222,7 @@ def scrapEachPage(ALLDATA,ANZDATA,EventName,EventURL,TotalAttendees,driver):
         ALLDATA.append(data)
         ANZDATA.append(data)
     else:
+        time.sleep(rand(2,4))
         for eachBox in ParentBoxes:
             try:
                 FullName = GetName(eachBox)
@@ -241,10 +255,6 @@ def scrapEachPage(ALLDATA,ANZDATA,EventName,EventURL,TotalAttendees,driver):
             ALLDATA.append(data)
             ANZDATA.append(data)
 
-driver=webdriver.Chrome(options=options, executable_path='/home/ubuntu/Desktop/chromedriver')#'/home/tarek/my_Projects/chromedriver' #'/home/ubuntu/Desktop/chromedriver'
-
-stealth(driver, languages=["en-US", "en"], vendor="Google Inc.", platform="Win32", webgl_vendor="Intel Inc.", fix_hairline=True,)
-prepareCookies(driver)
 
 def ScrapAttendees(EventURL,ANZDATA):
     ALLDATA = []
@@ -262,6 +272,10 @@ def ScrapAttendees(EventURL,ANZDATA):
             except:
                 pass
         TotalAttendees = GetTotalAttendees(driver)
+        try:
+            Event_Date = driver.find_element_by_xpath('//div[*[@type="calendar-icon"]]//span').text
+        except:
+            Event_Date = ''
         
         a = EventURL.replace('https://www.linkedin.com/events/','').replace('/','')
         geocode='"101452733"%2C"105490917"'
@@ -281,6 +295,10 @@ def ScrapAttendees(EventURL,ANZDATA):
                 break
             else:
                 pass
+        try:
+            TotalANZ_Atteendees = GetANZ_Attendees(driver)
+        except:
+            TotalANZ_Atteendees = 'Could not get Total ANZ Attendees Number'
         
         ParentFolder = 'Database Backup'
         
@@ -304,56 +322,216 @@ def ScrapAttendees(EventURL,ANZDATA):
             writer.writerows(ALLDATA)
             csvfile.close()
         #print(f'"{FileName}" has been successfully created')
+        return TotalANZ_Atteendees, Event_Date
     else:
-        pass
+        return '',''
+def match(TitlePlusDesc,Keywords):
+    for each_keyword in Keywords:
+        each_keyword = re.sub(r'^ ',"",each_keyword)
+        if each_keyword.lower() in TitlePlusDesc:
+            return 'Matched'
+        else:
+            pass
+    return "Not-Matched"
 
 
 def main():
-    userInput = input('Type 1 to Continue with a CSV file\nType 2 to scrap a single events attendees\n>>>>>>>>> : ')
-    if userInput=='1':
-        csvfile = GetTargetFile('Select input CSV file (with column name "URL"')
-        ParentFolder = 'Event Database'
-        SubFolder = re.sub(r'/(.+)','',(re.sub(r'.+Database/','',csvfile)))
-        try:
-            os.mkdir(os.path.join(ParentFolder,SubFolder,'ANZ Attendees'))
-        except:
-            pass
-        
-        with open(csvfile, 'r', encoding="utf8") as inputCSV:
-            reader = csv.DictReader(inputCSV,delimiter=",")
-            events = []
-            for row in reader:
-                events.append(row)
-        ANZDATA = []
-        try:
-            for i in events:
-                if int(i['EventAttendees'])>20:
-                    ScrapAttendees(i['EventURL'],ANZDATA)
+    ParentFolder = 'Event Database'
+    SubFolder = re.sub(r'/(.+)','',(re.sub(r'.+Database/','',csvfile)))
+    try:
+        os.mkdir(os.path.join(ParentFolder,SubFolder,'ANZ Attendees'))
+    except:
+        pass
+    
+    with open(csvfile, 'r', encoding="utf8") as inputCSV:
+        reader = csv.DictReader(inputCSV,delimiter=",")
+        events = []
+        for row in reader:
+            events.append(row)
+    ANZDATA = []
+    EventsOverview=[]
+    try:
+        '''minimumAttendessRequired= input('Shall we skip events with less than 10 going? Y/N\n:')
+        Match_Keywords_with_EventTitle_and_Description = input('What keywords shall we scrape events for in the description / title? (Leave blank if you want to scrape all)\n:')
+        '''
+        if Match_Keywords_with_EventTitle_and_Description == '':
+            # if user input is blank
+
+            #############################################
+            if minimumAttendessRequired == 'Y':
+                for i in events:
+                    EventName = i['EventTitle']
+                    EventURL = i['EventURL']
+                    EventTotalAttendees = i['EventAttendees']
+                    EventDescription = i['EventShortDesc']
+                    if int(i['EventAttendees'])>10:
+                        try:
+                            EventTotalANZAtteendees, Event_Date = ScrapAttendees(i['EventURL'],ANZDATA)
+                            Beginning_Day, Finishing_Day, Days_from_Begining_Day, Days_from_Finishing_Day = CallDateTime(Event_Date)
+                            time.sleep(rand(3,10))
+                        except:
+                            Event_Date, EventTotalANZAtteendees, Days_from_Begining_Day, Days_from_Finishing_Day,Beginning_Day, Finishing_Day = '','','','','',''
+                    else:
+                        Event_Date, EventTotalANZAtteendees, Days_from_Begining_Day, Days_from_Finishing_Day,Beginning_Day, Finishing_Day = '','','','','',''
+                    EventSummary = {
+                            'Time':time.ctime(),
+                            'Event URL':EventURL,
+                            'Event Name':EventName,
+                            'Total Attendees':EventTotalAttendees,
+                            'Total ANZ Atteendees':EventTotalANZAtteendees,
+                            'Event Description' : EventDescription,
+                            'Event Date': Event_Date,
+                            'Beginning Day':Beginning_Day, 
+                            'Finishing Day':Finishing_Day,
+                            'Days_from_Begining_Day': Days_from_Begining_Day,
+                            'Days_from_Finishing_Day':Days_from_Finishing_Day
+                            }
+                    EventsOverview.append(EventSummary)
+            
+            #############################################
+            elif minimumAttendessRequired == 'N':
+                for i in events:
+                    EventName = i['EventTitle']
+                    EventURL = i['EventURL']
+                    EventTotalAttendees = i['EventAttendees']
+                    EventDescription = i['EventShortDesc']
+                    EventTotalANZAtteendees, Event_Date = ScrapAttendees(i['EventURL'],ANZDATA)
+                    Beginning_Day, Finishing_Day, Days_from_Begining_Day, Days_from_Finishing_Day = CallDateTime(Event_Date)
                     time.sleep(rand(3,10))
-                else:
-                    pass
-        finally:
-            df = pd.DataFrame(ANZDATA)
-            try:
-                df[["First Name","Last Name"]] = ''
-                for i in range(len(df)):
-                    FullName = df.loc[i, "Full Name"]
-                    F = FullName.split(' ')
-                    if len(F)==1:
-                        df.loc[i, "First Name"]= F[0]
-                        df.loc[i, "Last Name"]= ''
-                    elif len(F)>1:
-                        df.loc[i, "First Name"]= F[0]
-                        df.loc[i, "Last Name"]= F[1]
-                FileName = f'ANZ Attendees at {time.ctime()}.csv'
-                df.to_csv(os.path.join(ParentFolder,SubFolder,'ANZ Attendees',FileName))
-            except:
-                FileName = f'ANZ Attendees at {time.ctime()}.csv'
-                df.to_csv(os.path.join(ParentFolder,SubFolder,'ANZ Attendees',FileName))
+                    EventSummary = {
+                            'Time':time.ctime(),
+                            'Event URL':EventURL,
+                            'Event Name':EventName,
+                            'Total Attendees':EventTotalAttendees,
+                            'Total ANZ Atteendees':EventTotalANZAtteendees,
+                            'Event Description':EventDescription,
+                            'Event Date':Event_Date,
+                            'Beginning Day':Beginning_Day, 
+                            'Finishing Day':Finishing_Day,
+                            'Days_from_Begining_Day': Days_from_Begining_Day,
+                            'Days_from_Finishing_Day':Days_from_Finishing_Day
+                            }
+                    EventsOverview.append(EventSummary)
+                    time.sleep(rand(3,10))
+
+        elif Match_Keywords_with_EventTitle_and_Description != '':
+            # if user input is not blank
+            if not ',' in Match_Keywords_with_EventTitle_and_Description:
+                Keywords = [Match_Keywords_with_EventTitle_and_Description,Match_Keywords_with_EventTitle_and_Description]
+            elif ',' in Match_Keywords_with_EventTitle_and_Description:
+                Keywords = Match_Keywords_with_EventTitle_and_Description.split(',')
+            
+            
+            #############################################
+            if minimumAttendessRequired == 'Y':
                 
-    elif userInput=='2':
-        eventURL = input('\nType the events url\n>>> : ')
-        return ScrapAttendees(eventURL)
+                for i in events:
+                    EventName = i['EventTitle']
+                    EventURL = i['EventURL']
+                    EventTotalAttendees = i['EventAttendees']
+                    EventDescription = i['EventShortDesc']
+                    if int(i['EventAttendees'])>10:
+                        Text_to_match_with = str(i['EventTitle']) + str(i['EventShortDesc'])
+                        Test = match(Text_to_match_with,Keywords)
+                        if Test=='Matched':
+                            ##############
+                            Keyword_Match = 'True'
+                            EventTotalANZAtteendees, Event_Date = ScrapAttendees(i['EventURL'],ANZDATA)
+                            Beginning_Day, Finishing_Day, Days_from_Begining_Day, Days_from_Finishing_Day = CallDateTime(Event_Date)
+                            time.sleep(rand(3,10))
+                        else:
+                            Keyword_Match = 'False'
+                            Event_Date, EventTotalANZAtteendees, Days_from_Begining_Day, Days_from_Finishing_Day,Beginning_Day, Finishing_Day = '','','','','',''
+                        EventSummary = {
+                            'Time':time.ctime(),
+                            'Event URL':EventURL,
+                            'Event Name':EventName,
+                            'Total Attendees':EventTotalAttendees,
+                            'Total ANZ Atteendees':EventTotalANZAtteendees,
+                            'Event Description':EventDescription,
+                            'Keyword Match':Keyword_Match,
+                            'Event Date':Event_Date,
+                            'Beginning Day':Beginning_Day, 
+                            'Finishing Day':Finishing_Day,
+                            'Days_from_Begining_Day': Days_from_Begining_Day,
+                            'Days_from_Finishing_Day':Days_from_Finishing_Day
+                            }
+                        EventsOverview.append(EventSummary)
+                    else:
+                        pass
+            #############################################
+            elif minimumAttendessRequired == 'N':
+                for i in events:
+                    EventName = i['EventTitle']
+                    EventURL = i['EventURL']
+                    EventTotalAttendees = i['EventAttendees']
+                    EventDescription = i['EventShortDesc']
+                    Text_to_match_with = str(i['EventTitle']) + str(i['EventShortDesc'])
+                    Test = match(Text_to_match_with,Keywords)
+                    if Test=='Matched':
+                        ##############
+                        Keyword_Match = 'True'
+                        EventTotalANZAtteendees, Event_Date  = ScrapAttendees(i['EventURL'],ANZDATA)
+                        Beginning_Day, Finishing_Day, Days_from_Begining_Day, Days_from_Finishing_Day = CallDateTime(Event_Date)
+                        time.sleep(rand(3,10))
+                    else:
+                        Keyword_Match = 'False'
+                        Event_Date, EventTotalANZAtteendees, Days_from_Begining_Day, Days_from_Finishing_Day,Beginning_Day, Finishing_Day = '','','','','',''
+                    EventSummary = {
+                        'Time':time.ctime(),
+                        'Event URL':EventURL,
+                        'Event Name':EventName,
+                        'Total Attendees':EventTotalAttendees,
+                        'Total ANZ Atteendees':EventTotalANZAtteendees,
+                        'Event Description':EventDescription,
+                        'Keyword Match':Keyword_Match,
+                        'Event Date':Event_Date,
+                        'Beginning Day':Beginning_Day, 
+                        'Finishing Day':Finishing_Day,
+                        'Days_from_Begining_Day': Days_from_Begining_Day,
+                        'Days_from_Finishing_Day':Days_from_Finishing_Day
+                        }
+                    EventsOverview.append(EventSummary)
+
+
+    finally:
+        df = pd.DataFrame(ANZDATA)
+        df[["First Name","Last Name"]] = ''
+        df[["Title","Company"]] = ''
+        for i in range(len(df)):
+            FullName = df.loc[i, "Full Name"]
+            F = FullName.split(' ')
+            if len(F)==1:
+                df.loc[i, "First Name"]= F[0]
+                df.loc[i, "Last Name"]= ''
+            elif len(F)>1:
+                df.loc[i, "First Name"]= F[0]
+                df.loc[i, "Last Name"]= F[1]
+            
+            Position_And_Company = df.loc[i, 'Position And Company']
+            if ' at ' in Position_And_Company:
+                PC = Position_And_Company.split(' at ')
+                df.loc[i, "Title"] = PC[0]
+                df.loc[i, "Company"] = PC[1]
+            else:
+                df.loc[i, "Title"] = ''
+                df.loc[i, "Company"] = ''
+
+
+        FileName = f'ANZ Attendees (From Scrap Attendees Run at {time.ctime()}).csv'
+        df.to_csv(os.path.join(ParentFolder,SubFolder,'ANZ Attendees',FileName))
+        EventOverviewDataframe = pd.DataFrame(EventsOverview).to_csv(f'Event Run Summary - {time.ctime()}.csv')
+
+
+csvfile = GetTargetFile('Select input CSV file (with column name')
+minimumAttendessRequired = GetUserInputViaPrompt('Minimum Attendees Requirement','Shall we skip events with less than 10 going?\nType Y/N')
+
+Match_Keywords_with_EventTitle_and_Description = GetUserInputViaPrompt('Match Keywords with Title & Description','What keywords shall we scrape events for in the description / title?\nSeparate Keywords by comma\n - Leave blank if you want to scrape all')
+
+driver=webdriver.Chrome(options=options, executable_path='/home/tarek/my_Projects/chromedriver')#'/home/tarek/my_Projects/chromedriver' #'/home/ubuntu/Desktop/chromedriver'
+
+stealth(driver, languages=["en-US", "en"], vendor="Google Inc.", platform="Win32", webgl_vendor="Intel Inc.", fix_hairline=True,)
+prepareCookies(driver)
 
 main()
 driver.quit()
