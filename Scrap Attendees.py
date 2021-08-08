@@ -197,7 +197,7 @@ def CheckIfEventEnded(driver):
     except:
         pass
 
-def scrapEachPage(ALLDATA,ANZDATA,EventName,EventURL,TotalAttendees,driver):
+def scrapEachPage(ANZDATA,EventName,EventURL,TotalAttendees,driver):
     ScrapingTime = time.ctime()
     ParentBoxes = ListEachPagesResult(driver)
     ANZ_Atteendees = GetANZ_Attendees(driver)
@@ -210,16 +210,15 @@ def scrapEachPage(ALLDATA,ANZDATA,EventName,EventURL,TotalAttendees,driver):
         # get unique id
         data = {
             'Scraping Time': ScrapingTime,
-            'Event URL':EventURL,
+            'EventURL':EventURL,
             'Event Name': EventName,
-            'Total Attendees':TotalAttendees,
+            'EventAttendees':TotalAttendees,
             'Total ANZ Atteendees': ANZ_Atteendees,
             'Full Name':FullName,
             'Position And Company':PositionAndCompany,
             'Location':Location,
             'Profile URL':ProfileURL
             }
-        ALLDATA.append(data)
         ANZDATA.append(data)
     else:
         time.sleep(rand(2,4))
@@ -240,26 +239,21 @@ def scrapEachPage(ALLDATA,ANZDATA,EventName,EventURL,TotalAttendees,driver):
                 ProfileURL = GetProfileURL(eachBox)
             except:
                 ProfileURL = ''
-            # get unique id
             data = {
                 'Scraping Time': ScrapingTime,
-                'Event URL':EventURL,
+                'EventURL':EventURL,
                 'Event Name': EventName,
-                'Total Attendees':TotalAttendees,
+                'EventAttendees':TotalAttendees,
                 'Total ANZ Atteendees': ANZ_Atteendees,
                 'Full Name':FullName,
                 'Position And Company':PositionAndCompany,
                 'Location':Location,
                 'Profile URL':ProfileURL
                 }
-            ALLDATA.append(data)
             ANZDATA.append(data)
 
 
 def ScrapAttendees(EventURL,ANZDATA):
-    ALLDATA = []
-    EventID=str(re.sub(r'/.+|/$','',EventURL.replace('https://www.linkedin.com/events/','')))
-    
     driver.get(EventURL)
     if CheckIfEventEnded(driver)!='Ended':
         check_event = checkIfAlreadyJoinedTheEvent(driver)
@@ -282,7 +276,7 @@ def ScrapAttendees(EventURL,ANZDATA):
         GeoEventURL = f'https://www.linkedin.com/search/results/people/?eventAttending="{a}"&geoUrn=%5B{geocode}%5D&origin=FACETED_SEARCH'
         driver.get(GeoEventURL)
         while True:
-            scrapEachPage(ALLDATA,ANZDATA,EventName,EventURL,TotalAttendees,driver)
+            scrapEachPage(ANZDATA,EventName,EventURL,TotalAttendees,driver)
             time.sleep(rand(4,15))
             LastPageTest = EvaluateIfWeAreInLastPage(driver)
             
@@ -295,33 +289,8 @@ def ScrapAttendees(EventURL,ANZDATA):
                 break
             else:
                 pass
-        try:
-            TotalANZ_Atteendees = GetANZ_Attendees(driver)
-        except:
-            TotalANZ_Atteendees = 'Could not get Total ANZ Attendees Number'
+        TotalANZ_Atteendees = GetANZ_Attendees(driver)
         
-        ParentFolder = 'Database Backup'
-        
-        characters = ['/']
-        for i in characters:
-            EventName = EventName.replace(i,'-')
-        
-        SubFolder = EventName
-        
-        try:
-            os.mkdir(os.path.join(ParentFolder,SubFolder))
-        except:
-            pass
-        FileName = (f'{SubFolder} {EventID} at {time.ctime()}.csv')
-        CSV_ExportFileName = os.path.join(ParentFolder,SubFolder,FileName)
-        
-        fieldnames = ALLDATA[0].keys()
-        with open(CSV_ExportFileName,'w',  encoding="utf8") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames = fieldnames)
-            writer.writeheader()
-            writer.writerows(ALLDATA)
-            csvfile.close()
-        #print(f'"{FileName}" has been successfully created')
         return TotalANZ_Atteendees, Event_Date
     else:
         return '',''
@@ -348,6 +317,7 @@ def main():
         events = []
         for row in reader:
             events.append(row)
+        inputCSV.close()
     ANZDATA = []
     EventsOverview=[]
     try:
@@ -375,9 +345,9 @@ def main():
                         Event_Date, EventTotalANZAtteendees, Days_from_Begining_Day, Days_from_Finishing_Day,Beginning_Day, Finishing_Day = '','','','','',''
                     EventSummary = {
                             'Time':time.ctime(),
-                            'Event URL':EventURL,
+                            'EventURL':EventURL,
                             'Event Name':EventName,
-                            'Total Attendees':EventTotalAttendees,
+                            'EventAttendees':EventTotalAttendees,
                             'Total ANZ Atteendees':EventTotalANZAtteendees,
                             'Event Description' : EventDescription,
                             'Event Date': Event_Date,
@@ -400,9 +370,9 @@ def main():
                     time.sleep(rand(3,10))
                     EventSummary = {
                             'Time':time.ctime(),
-                            'Event URL':EventURL,
+                            'EventURL':EventURL,
                             'Event Name':EventName,
-                            'Total Attendees':EventTotalAttendees,
+                            'EventAttendees':EventTotalAttendees,
                             'Total ANZ Atteendees':EventTotalANZAtteendees,
                             'Event Description':EventDescription,
                             'Event Date':Event_Date,
@@ -444,9 +414,9 @@ def main():
                             Event_Date, EventTotalANZAtteendees, Days_from_Begining_Day, Days_from_Finishing_Day,Beginning_Day, Finishing_Day = '','','','','',''
                         EventSummary = {
                             'Time':time.ctime(),
-                            'Event URL':EventURL,
+                            'EventURL':EventURL,
                             'Event Name':EventName,
-                            'Total Attendees':EventTotalAttendees,
+                            'EventAttendees':EventTotalAttendees,
                             'Total ANZ Atteendees':EventTotalANZAtteendees,
                             'Event Description':EventDescription,
                             'Keyword Match':Keyword_Match,
@@ -479,9 +449,9 @@ def main():
                         Event_Date, EventTotalANZAtteendees, Days_from_Begining_Day, Days_from_Finishing_Day,Beginning_Day, Finishing_Day = '','','','','',''
                     EventSummary = {
                         'Time':time.ctime(),
-                        'Event URL':EventURL,
+                        'EventURL':EventURL,
                         'Event Name':EventName,
-                        'Total Attendees':EventTotalAttendees,
+                        'EventAttendees':EventTotalAttendees,
                         'Total ANZ Atteendees':EventTotalANZAtteendees,
                         'Event Description':EventDescription,
                         'Keyword Match':Keyword_Match,
@@ -498,6 +468,7 @@ def main():
         df = pd.DataFrame(ANZDATA)
         df[["First Name","Last Name"]] = ''
         df[["Title","Company"]] = ''
+        
         for i in range(len(df)):
             FullName = df.loc[i, "Full Name"]
             F = FullName.split(' ')
@@ -507,6 +478,7 @@ def main():
             elif len(F)>1:
                 df.loc[i, "First Name"]= F[0]
                 df.loc[i, "Last Name"]= F[1]
+            
             
             Position_And_Company = df.loc[i, 'Position And Company']
             if ' at ' in Position_And_Company:
@@ -518,9 +490,32 @@ def main():
                 df.loc[i, "Company"] = ''
 
 
+            #cols = df.columns.tolist()
+            #cols = cols[-1:] + cols[:-1]
+            #df = df[cols]
+        
         FileName = f'ANZ Attendees (From Scrap Attendees Run at {time.ctime()}).csv'
         df.to_csv(os.path.join(ParentFolder,SubFolder,'ANZ Attendees',FileName))
-        EventOverviewDataframe = pd.DataFrame(EventsOverview).to_csv(f'Event Run Summary - {time.ctime()}.csv')
+        
+        
+        Summary = EvalAttendeeGrowth(EventsOverview,events)
+        EventOverviewDataframe = pd.DataFrame(Summary)
+        
+        EventOverviewDataframe.to_csv(f'Event Run Summary - {time.ctime()}.csv')
+
+
+
+def GetPreviousAttendees(EventURL,OldDatasetList):
+    for o in OldDatasetList:
+        if EventURL==o['EventURL']:
+            return o['EventAttendees']
+def EvalAttendeeGrowth(LatestDataSetList,OldDatasetList):
+    NewDataDictList = []
+    for j in LatestDataSetList:
+        j['PreviousAttendees'] = GetPreviousAttendees(j['EventURL'],OldDatasetList)
+        j['Total Growth'] = int(j['EventAttendees']) - int(j['PreviousAttendees'])
+        NewDataDictList.append(j)
+    return NewDataDictList
 
 
 csvfile = GetTargetFile('Select input CSV file (with column name')
